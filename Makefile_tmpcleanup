@@ -1,0 +1,21 @@
+CC =  gcc
+CFLAGS   =  -Wall -Wextra  -Werror
+LINK  =  -lncurses
+
+SRCS  =  check_before_cleanup.c cleanup.c tmp_cleanup.c
+OBJS  =  $(SRCS:.c=.o)
+
+TARGET   =  tmp_cleanup
+
+DEPS  =   $(SRCS:.c=.o)
+
+all:  $(TARGET)
+
+$(TARGET):  $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LINK)
+
+%.o   :  %.c
+	$(CC) $(CFLAGS)   -c $< -o $@
+
+clean:
+	rm -f $(OBJS)  $(TARGET)
