@@ -1,18 +1,13 @@
+#include "log_check_final.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <utmp.h>
 #include <string.h>
 #include <time.h>
 #include <ncurses.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#define KEY_SPACE 32
 
-typedef struct {
-    struct utmp log;
-    int failure_count;
-} LogEntry;
 
 int compare_logs(const void *a, const void *b) {
     const LogEntry *entry_a = (const LogEntry *)a;
@@ -151,7 +146,7 @@ void display_press_enter_message(WINDOW *win) {
     wprintw(win, "%s", suffix);
 }
 
-int main() {
+int logcheck_main() {
     initscr();
     cbreak();
     noecho();

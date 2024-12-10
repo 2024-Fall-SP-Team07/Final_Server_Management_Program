@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 700
+#include "pw_check5.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,11 +6,6 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <ncurses.h>
-
-
-#define MAX_USERS 100
-#define MAX_OUTPUT_LEN 512
-
 
 // Function to check password expiry information for a user
 void check_password_expiry(const char *username, char *output) {
@@ -157,7 +152,7 @@ void display_users_with_ncurses(const char users[MAX_USERS][256], int total_user
 }
 
 
-int main() {
+int pw_main(void) {
    char users[MAX_USERS][256];
    int total_users = 0;
 

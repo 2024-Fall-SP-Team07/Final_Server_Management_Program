@@ -8,7 +8,7 @@
 
 #define ERROR_LOG_PATH_MONITOR "/var/log/00_Server_Management/zz_resources_monitor_error.log"
 
-int main(void){
+int resources_main(void){
     int fd = -1;
     DIR* dir_ptr = NULL;
     DateInfo date = get_Date();
@@ -29,7 +29,7 @@ int main(void){
         fprintf(stderr, "%04d-%02d-%02d %02d:%02d:%02d Fail to open/create: %s\n", date.year, date.month, date.day, date.hrs, date.min, date.sec, ERROR_LOG_PATH_MONITOR);
         return 0;
     }
-    initialization();
+    warning_winsize();
     display_main();
     return 0;
 }

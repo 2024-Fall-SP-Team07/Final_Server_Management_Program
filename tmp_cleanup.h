@@ -13,6 +13,6 @@ int should_exclude_directory(const char*);
 int cleanup_files_recursive(const char*, int, int);
 int cleanup_log_files(const char*, int, int);
 int ask_delete_confirmation(int*);
-int main();
+int tmp_cleanup_main();
 
 #endif

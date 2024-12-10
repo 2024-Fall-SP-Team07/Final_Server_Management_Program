@@ -1,27 +1,34 @@
-#include "mainScreen.h"
+#include "00_mainScreen.h"
+#include "common.h"
+#include "tmp_cleanup.h"
+#include "resources_monitor.h"
+#include "permission_check.h"
+#include "pw_check5.h"
+#include "log_check_final.h"
+#include "logrotate_main.h"
 #include <ncurses.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <termio.h>
+#include <unistd.h>
+#include <fcntl.h>
 
-int main() {
-    initscr();              
-    cbreak();               
-    noecho();               
-    keypad(stdscr, TRUE);   
-    curs_set(0);
-
+struct winsize wbuf;
+int main(void) {
     MenuItem menu[MAX_MENU_ITEMS] = {
-        {"1. Temporary_File_Cleaning", menu_action_1},
-        {"2. Password_Checking", menu_action_2},
-        {"3. Log_Checking", menu_action_3},
-        {"4. Permission_Checking", menu_action_4},
-        {"5. Resources Monitor", menu_action_5},
-        {"Quit", menu_action_exit}  // Quit 메뉴 항목 추가
+        {"1. Temporary File Cleaning", menu_action_1},
+        {"2. Permission Checking", menu_action_2},
+        {"3. Password Checking", menu_action_3},
+        {"4. Resources Monitor", menu_action_4},
+        {"5. Log Checking", menu_action_5},
+        {"6. Log Rotate", menu_action_6},
+        {"Quit", menu_action_exit}
     };
-
-    int current = 0; // 현재 선택된 메뉴 항목 인덱스
+    int current = 0;
     int ch;
+
+    initialization();
 
     while (1) {
         erase();
@@ -43,44 +50,55 @@ int main() {
     return 0;
 }
 
+void initialization(void){
+    // int fd = -1, flags;
+    DateInfo date = get_Date();
+    initscr();              
+    cbreak();               
+    noecho();               
+    keypad(stdscr, TRUE);   
+    curs_set(0);
+    start_color();
+    use_default_colors();
+    init_pair(1, COLOR_BLACK, COLOR_WHITE);
+    init_pair(2, COLOR_MAGENTA, -1);
+
+    (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? fprintf(stderr, "%s\n", exception(-4, "main", "Windows Size", &date)) : 0;
+    // fd = fileno(stdin);
+    // flags = fcntl(fd, F_GETFL, 0);
+    // fcntl(fd, F_SETOWN, getpid());
+    // fcntl(fd, F_SETFL, flags | O_ASYNC | O_NONBLOCK);
+}
 
 void menu_action_1() {
-    printw("You selected Option 1.\n");
-    getch();
+    tmp_cleanup_main();
 }
 
 void menu_action_2() {
-    clear();
-    printw("You selected Option 2.\n");
-    refresh();
-    getch();
+    permissions_main();
 }
 
 void menu_action_3() {
-    clear();
-    printw("You selected Option 3.\n");
-    refresh();
-    getch();
+    pw_main();
 }
 
 void menu_action_4() {
-    clear();
-    printw("You selected Option 4.\n");
-    refresh();
-    getch();
+    resources_main();
 }
 
 void menu_action_5(){
-    clear();
-    printf("You selected Option 5.\n");
-    refresh();
-    getch();
+    logcheck_main();
+}
+
+void menu_action_6(){
+    logrotate_main();
 }
 
 void menu_action_exit() {
-    clear();
-    printw("Exiting menu...\n");
-    refresh();
+    int fd = fileno(stdin);
+    int flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETOWN, 0);
+    fcntl(fd, F_SETFL, flags & ~(O_ASYNC | O_NONBLOCK));
     endwin();
     exit(0); 
 }

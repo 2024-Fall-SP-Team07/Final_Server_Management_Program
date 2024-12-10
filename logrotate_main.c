@@ -1,6 +1,6 @@
 #include "logrotate.h"
 
-int main() {
+int logrotate_main() {
     LogConfig config;
     char log_dir[256];
 
