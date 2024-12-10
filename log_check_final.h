@@ -17,7 +17,7 @@ void print_log_info(WINDOW *win, struct utmp *log, int failure_count, int y, int
 int read_log_file(WINDOW *win, const char *file_path, int start_line, int max_lines, int *total_lines);
 void display_message(WINDOW *win, int login_attempts, int login_failures);
 void display_title(WINDOW *win, int max_x);
-void display_footer_message(WINDOW *win, int max_y, int max_x);
+void display_footer_message();
 void display_more_message(WINDOW *win, int y, int current, int total);
 void display_press_enter_message(WINDOW *win);
 int logcheck_main();

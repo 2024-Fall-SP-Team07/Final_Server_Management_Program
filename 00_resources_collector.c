@@ -82,10 +82,12 @@ int main(void){
         return 0;
     }    
 
-    pthread_create(&t1, NULL, write_CPU_Information, NULL);
-    pthread_create(&t2, NULL, write_Mem_Information, NULL);
-    pthread_join(t1, NULL);
-    pthread_join(t2, NULL);
-    
+    while(1){
+        pthread_create(&t1, NULL, write_CPU_Information, NULL);
+        pthread_create(&t2, NULL, write_Mem_Information, NULL);
+        pthread_join(t1, NULL);
+        pthread_join(t2, NULL);
+        sleep(1);
+    }
     return 0;
 }

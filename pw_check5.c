@@ -7,11 +7,11 @@
 #include <sys/ioctl.h>
 #include <ncurses.h>
 
-// Function to check password expiry information for a user
+extern struct winsize wbuf;
+
 void check_password_expiry(const char *username, char *output) {
    char command[256];
    snprintf(command, sizeof(command), "sudo chage -l %s", username);
-
 
    FILE *fp = popen(command, "r");
    if (fp == NULL) {
@@ -19,13 +19,11 @@ void check_password_expiry(const char *username, char *output) {
        return;
    }
 
-
    char buffer[256];
    time_t now = time(NULL);
    struct tm last_change_tm = {0};
    int last_change_found = 0;
    char last_change_date[256] = "N/A";
-
 
    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
        if (strstr(buffer, "Last password change") != NULL) {
@@ -51,8 +49,6 @@ void check_password_expiry(const char *username, char *output) {
    pclose(fp);
 }
 
-
-// Function to get all users with shell access from /etc/passwd
 int get_all_users(char users[MAX_USERS][256], int *total_users) {
    FILE *fp = fopen("/etc/passwd", "r");
    if (fp == NULL) {
@@ -71,8 +67,6 @@ int get_all_users(char users[MAX_USERS][256], int *total_users) {
        if (username == NULL) {
            continue;
        }
-
-
        char *last_colon = strrchr(line, ':');
        if (last_colon && (strstr(last_colon, "bash") || strstr(last_colon, "sh") || strstr(last_colon, "zsh"))) {
            strncpy(users[user_count], username, 256);
@@ -80,75 +74,51 @@ int get_all_users(char users[MAX_USERS][256], int *total_users) {
            user_count++;
        }
    }
-
-
    fclose(fp);
    *total_users = user_count;
    return 0;
 }
 
-
-// Function to display user information with ncurses and pagination
 void display_users_with_ncurses(const char users[MAX_USERS][256], int total_users) {
    int start_index = 0;
    char output[MAX_OUTPUT_LEN];
-
-
-   initscr();              // Initialize ncurses
-   cbreak();               // Immediate input processing
-   noecho();               // Do not echo user input
-   keypad(stdscr, TRUE);   // Enable arrow keys
+   initscr();
+   cbreak();
+   noecho();
+   keypad(stdscr, TRUE);
 
 
    while (1) {
-       clear(); // Clear screen
+        clear();
+        int rows, cols;
+        (void)cols;
+        getmaxyx(stdscr, rows, cols);
 
+        int lines_per_page = rows - 4;
+        int end_index = start_index + lines_per_page;
+        if (end_index > total_users) {
+            end_index = total_users;
+        }
 
-       // Get terminal size
-       int rows, cols;
-       (void)cols;
-       getmaxyx(stdscr, rows, cols);
-
-
-       int lines_per_page = rows - 4; // Exclude header/footer rows
-       int end_index = start_index + lines_per_page;
-       if (end_index > total_users) {
-           end_index = total_users;
-       }
-
-
-       mvprintw(0, 0, "Displaying users %d to %d (Total: %d)", start_index + 1, end_index, total_users);
-       mvprintw(1, 0, "[Enter/Space: Next page, q: Quit]\n");
-
-
-       // Display user password information
-       for (int i = start_index; i < end_index; i++) {
-           check_password_expiry(users[i], output);
-           mvprintw(3 + (i - start_index), 0, "%s", output);
-       }
-
-
-       refresh();
-
-
-       // Handle user input
-       int ch = getch();
-       if (ch == 'q') {
-           break; // Quit program
-       } else if (ch == ' ' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
-           if (end_index < total_users) {
-               start_index += lines_per_page; // Move to the next page
-           } else {
-               mvprintw(rows - 1, 0, "End of list. Press 'q' to quit.");
-               refresh();
-               getch(); // Wait for input
-               break;
-           }
-       }
-   }
-
-
-   endwin(); // End ncurses mode
+        mvprintw(0, 0, "Displaying users %d to %d (Total: %d)", start_index + 1, end_index, total_users);
+        mvprintw(2, 0, "[Enter/Space: Next page / q: return to main]\n");
+        
+        for (int i = start_index; i < end_index; i++) {
+            check_password_expiry(users[i], output);
+            mvprintw(4 + (i - start_index), 0, "%s", output);
+        }
+        refresh();
+        // Handle user input
+        int ch = getch();
+        if (ch == 'q') {
+            break;
+        } else if (ch == ' ' || ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+            if (end_index < total_users) {
+                start_index += lines_per_page;
+            }
+        }
+    }
+   endwin();
 }
 
 
@@ -156,16 +126,11 @@ int pw_main(void) {
    char users[MAX_USERS][256];
    int total_users = 0;
 
-
-   // Get all user information
    if (get_all_users(users, &total_users) == 0) {
-       // Display user information with ncurses
        display_users_with_ncurses(users, total_users);
    } else {
        printf("Failed to get user information.\n");
    }
-
-
    return 0;
 }
 

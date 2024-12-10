@@ -9,6 +9,9 @@
 #include <unistd.h>
 #include <time.h>
 #include <ncurses.h>
+#include <termio.h>
+
+extern struct winsize wbuf;
 
 void get_current_time(char *buffer, size_t size) {
     time_t now = time(NULL);
@@ -175,7 +178,11 @@ void display_page(FileLog *logs, int total_files, int invalid_files, const char 
     if (end < count) {
         mvprintw(LINES - 1, 0, "more? (Press 'n' for next page, 'q' to quit)");
     } else {
-        mvprintw(LINES - 1, 0, "End of results. (Press 'q' to quit)");
+        move(LINES - 1, 0);
+        attron(COLOR_PAIR(1));
+        hline(' ', wbuf.ws_col);
+        mvprintw(LINES - 1, wbuf.ws_col * 0.01, "End of results. To restore main screen, Press \"q\"");
+        attroff(COLOR_PAIR(1));
     }
 
     refresh();
@@ -206,7 +213,7 @@ void ncurses_display(FileLog *logs, int total_files, int invalid_files, const ch
 }
 
 int permissions_main() {
-    const char *input_file = "file_permissions.txt";
+    const char *input_file = "./file_permissions.txt";
     char log_file[MAX_LINE_LENGTH];
     FilePermission *permissions = NULL;
     FileLog *logs = NULL;

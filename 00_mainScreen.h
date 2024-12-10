@@ -8,6 +8,8 @@ typedef struct {
     void (*action)();
 } MenuItem;
 
+void signal_handling(int sig);
+void restore_screen_init(void);
 void initialization(void);
 void signal_handling(int);
 void restore_screen_init(void);

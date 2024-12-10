@@ -7,7 +7,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-
+extern struct winsize wbuf;
 
 int compare_logs(const void *a, const void *b) {
     const LogEntry *entry_a = (const LogEntry *)a;
@@ -120,18 +120,20 @@ void display_title(WINDOW *win, int max_x) {
 
 void display_footer_message(WINDOW *win, int max_y, int max_x) {
     const char *footer = "To restore main screen, Press \"q\"";
-    mvwprintw(win, max_y - 2, (max_x - strlen(footer)) / 2, "%s", footer);
+    wattron(win, COLOR_PAIR(1));
+    mvwprintw(win, max_y - 1, 0, "");
+    whline(win, ' ', wbuf.ws_col);
+    mvwprintw(win, max_y - 1, max_x * 0.01, "%s", footer);
+    wattroff(win, COLOR_PAIR(1));
 }
 
 void display_more_message(WINDOW *win, int y, int current, int total) {
-    const char *message = " more? ";
-    const char *hint = "[space-next, 0-exit]";
-
+    const char *message = " --more?-- ";
+    const char *hint = "Press \"Space\" to see the remaining.";
     wattron(win, A_REVERSE);
     mvwprintw(win, y, 2, "%s", message);
     wattroff(win, A_REVERSE);
-
-    mvwprintw(win, y, 8, "(%d/%d) %s", current, total, hint);
+    mvwprintw(win, y, strlen(message) + 2, " (%d/%d) %s", current, total, hint);
 }
 
 void display_press_enter_message(WINDOW *win) {
@@ -139,7 +141,7 @@ void display_press_enter_message(WINDOW *win) {
     const char *highlight = "Enter";
     const char *suffix = " to see detailed logs.";
 
-    mvwprintw(win, 2, 2, "%s", message);
+    mvwprintw(win, 3, 2, "%s", message);
     wattron(win, A_REVERSE);
     wprintw(win, "%s", highlight);
     wattroff(win, A_REVERSE);
@@ -201,7 +203,7 @@ int logcheck_main() {
 
         int ch = wgetch(main_win);
 
-        if (ch == '0') {
+        if (ch == 'q') {
             break;
         } else if (ch == '\n') {
             show_logs = 1; 

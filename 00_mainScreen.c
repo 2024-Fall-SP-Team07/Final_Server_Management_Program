@@ -12,7 +12,11 @@
 #include <stdlib.h>
 #include <termio.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <fcntl.h>
+
+#define ERROR_LOG_PATH "/var/log/00_Server_Management/zz_error.log"
 
 struct winsize wbuf;
 int main(void) {
@@ -27,6 +31,11 @@ int main(void) {
     };
     int current = 0;
     int ch;
+    
+    if(geteuid() != 0) {
+        printf("\nThis program must be running with root privileges. (using sudo or as root)...\nexit.\n\n");
+        exit(-1);
+    }
 
     initialization();
 
@@ -41,18 +50,32 @@ int main(void) {
             case KEY_DOWN:
                 current = (current < MAX_MENU_ITEMS - 1) ? current + 1 : 0;
                 break;
-            case 10: // Enter
-                menu[current].action(); // 선택된 메뉴 항목의 동작 실행
+            case 10:
+                menu[current].action();
                 break;
         }
     }
-    endwin(); // ncurses 종료
+    endwin();
     return 0;
 }
 
 void initialization(void){
-    // int fd = -1, flags;
+    int fd = -1;
+    DIR* dir_ptr = NULL;
     DateInfo date = get_Date();
+
+    close(2);
+    ((dir_ptr = opendir(LOG_PATH)) == NULL) ? mkdir(LOG_PATH, (S_IRWXU | S_IRGRP | S_IXGRP) & (~S_IRWXO) ) : closedir(dir_ptr);
+    if ((fd = open(ERROR_LOG_PATH, O_WRONLY | O_CREAT | O_APPEND, (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP ) & (~S_IRWXO))) == -1) {
+        fd = open("/dev/tty", O_WRONLY);
+        if (dup2(fd, 2) == -1) {
+            perror("dup2");
+            exit(EXIT_FAILURE);
+        }
+        fprintf(stderr, "%04d-%02d-%02d %02d:%02d:%02d Fail to open/create: %s\n", date.year, date.month, date.day, date.hrs, date.min, date.sec, ERROR_LOG_PATH);
+        return;
+    }
+
     initscr();              
     cbreak();               
     noecho();               
@@ -64,33 +87,37 @@ void initialization(void){
     init_pair(2, COLOR_MAGENTA, -1);
 
     (ioctl(0, TIOCGWINSZ, &wbuf) == -1) ? fprintf(stderr, "%s\n", exception(-4, "main", "Windows Size", &date)) : 0;
-    // fd = fileno(stdin);
-    // flags = fcntl(fd, F_GETFL, 0);
-    // fcntl(fd, F_SETOWN, getpid());
-    // fcntl(fd, F_SETFL, flags | O_ASYNC | O_NONBLOCK);
 }
 
 void menu_action_1() {
+    clear();
+    echo();
     tmp_cleanup_main();
+    noecho();
 }
 
 void menu_action_2() {
+    clear();
     permissions_main();
 }
 
 void menu_action_3() {
+    clear();
     pw_main();
 }
 
 void menu_action_4() {
+    clear();
     resources_main();
 }
 
 void menu_action_5(){
+    clear();
     logcheck_main();
 }
 
 void menu_action_6(){
+    clear();
     logrotate_main();
 }
 
@@ -99,6 +126,7 @@ void menu_action_exit() {
     int flags = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETOWN, 0);
     fcntl(fd, F_SETFL, flags & ~(O_ASYNC | O_NONBLOCK));
+    echo();
     endwin();
     exit(0); 
 }

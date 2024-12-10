@@ -5,14 +5,19 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/stat.h>
-#include <ncurses.h>
 
 #define ERROR_LOG_PATH_MONITOR "/var/log/00_Server_Management/zz_resources_monitor_error.log"
-int resources_main(void){
+
+int main(void){
     int fd = -1;
     DIR* dir_ptr = NULL;
     DateInfo date = get_Date();
     
+    if(geteuid() != 0) {
+        printf("\nThis program must be running with root privileges. (using sudo or as root)...\nexit.\n\n");
+        exit(-1);
+    }
+
     close(2);
     ((dir_ptr = opendir(LOG_PATH)) == NULL) ? mkdir(LOG_PATH, (S_IRWXU | S_IRGRP | S_IXGRP) & (~S_IRWXO) ) : closedir(dir_ptr);
     if ((fd = open(ERROR_LOG_PATH_MONITOR, O_WRONLY | O_CREAT | O_APPEND, (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP ) & (~S_IRWXO))) == -1) {
@@ -24,8 +29,7 @@ int resources_main(void){
         fprintf(stderr, "%04d-%02d-%02d %02d:%02d:%02d Fail to open/create: %s\n", date.year, date.month, date.day, date.hrs, date.min, date.sec, ERROR_LOG_PATH_MONITOR);
         return 0;
     }
-
-    resources_initialization();
+    initialization();
     display_main();
     return 0;
 }
