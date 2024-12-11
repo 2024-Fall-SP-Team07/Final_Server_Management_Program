@@ -41,7 +41,7 @@ void get_SystemTime(char* buf){
         strcpy(buf, "N/A");
         fprintf(stderr, "%s\n", exception(-4, "get_SystemTime", "SystemTime", &date));
     }
-    sprintf(res, "%04d-%02d-%02d %02d:%02d:%02d", lt->tm_year + 1900, lt->tm_mon + 1, lt->tm_mday, lt->tm_hour, lt->tm_min, lt->tm_sec);
+    snprintf(res, TIME_LEN, "%04d-%02d-%02d %02d:%02d:%02d", (lt->tm_year + 1900)%10000u, (lt->tm_mon + 1)%100u, (lt->tm_mday)%100u, (lt->tm_hour)%100u, (lt->tm_min)%100u, (lt->tm_sec)%100u);
     strcpy(buf, res);
 }
 
@@ -53,6 +53,6 @@ void get_UpTime(char* buf){
         strcpy(buf, "N/A");
         fprintf(stderr, "%s\n", exception(-4, "get_Uptime", "sysinfo", &date));
     }
-    sprintf(res, "%d days, %02d:%02d:%02d", (int)(info.uptime / 3600) / 24, (int)(info.uptime % (24 * 3600)) / 3600, (int)(info.uptime % 3600) / 60, (int)info.uptime % 60);
+    snprintf(res, TIME_LEN, "%d days, %02d:%02d:%02d", (int)((info.uptime / 3600) / 24)%10000u, (int)((info.uptime % (24 * 3600)) / 3600)%100u, (int)((info.uptime % 3600) / 60)%100u, (int)(info.uptime % 60)%100u);
     strcpy(buf,res);
 }

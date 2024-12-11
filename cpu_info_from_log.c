@@ -8,13 +8,20 @@ CPU_Result get_CPU_Information(int temp_boundary, int usage_boundary){
     int fd = -1, repeat_time = 0, idx = 0;
     CPU_Info priv_buf, cur_buf;
     CPU_Result res;
+    DateInfo date = get_Date();
     double sum_usage = 0, sum_temp = 0;
     repeat_time = ((temp_boundary < usage_boundary) ? usage_boundary : temp_boundary);
-    ((fd = open(CPU_INFO_LOG, O_RDONLY)) == -1) ? fprintf(stderr, "%s\n", exception(-1, "get_CPU_Information", "CPU Information Log", &(res.date))) : 0;
+    if ((fd = open(CPU_INFO_LOG, O_RDONLY)) == -1){
+        fprintf(stderr, "%s\n", exception(-1, "get_CPU_Information", "CPU Information Log", &(date)));
+        res.temp = 0;
+        res.usage = 0;
+        res.date = date;
+        return res;
+    }
     lseek(fd, -(sizeof(CPU_Info) * (repeat_time + 1)), SEEK_END);
     for (idx = 0; idx < repeat_time; idx++){
-        (read(fd, &priv_buf, sizeof(CPU_Info)) != sizeof(CPU_Info)) ? fprintf(stderr, "%s\n", exception(-2, "get_CPU_Information (Priv.)", "CPU Information Log", &(res.date))) : 0;
-        (read(fd, &cur_buf, sizeof(CPU_Info)) != sizeof(CPU_Info)) ? fprintf(stderr, "%s\n", exception(-2, "get_CPU_Information (Cur.)", "CPU Information Log", &(res.date))) : 0;
+        (read(fd, &priv_buf, sizeof(CPU_Info)) != sizeof(CPU_Info)) ? fprintf(stderr, "%s\n", exception(-2, "get_CPU_Information (Priv.)", "CPU Information Log", &(date))) : 0;
+        (read(fd, &cur_buf, sizeof(CPU_Info)) != sizeof(CPU_Info)) ? fprintf(stderr, "%s\n", exception(-2, "get_CPU_Information (Cur.)", "CPU Information Log", &(date))) : 0;
         lseek(fd, -sizeof(CPU_Info), SEEK_CUR);
         if (idx >= repeat_time - usage_boundary) {
             sum_usage += calc_CPU_Usage(&(priv_buf.usage), &(cur_buf.usage));
@@ -24,7 +31,11 @@ CPU_Result get_CPU_Information(int temp_boundary, int usage_boundary){
         }
     }
     close(fd);
-    res.temp = sum_temp / temp_boundary;
+    if (cur_buf.temp == -1){
+        res.temp = -1;
+    } else {
+        res.temp = sum_temp / temp_boundary;
+    }
     res.usage = sum_usage / usage_boundary;
     res.date = cur_buf.date;
     return res;

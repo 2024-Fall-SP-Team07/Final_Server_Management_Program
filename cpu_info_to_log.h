@@ -4,7 +4,7 @@
 
 #define CPU_INFO_TO_LOG_H
 #define MAX_TEMP_LEN 6
-#define PATH_LEN 37
+#define PATH_LEN 64
 #define TYPE_LEN 13
 #define LOG_MSG_LEN 28 // YYYY-DD-MM HH:MM:SS 100.00\n(<- Temperature, Celcius)
 

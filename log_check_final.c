@@ -121,7 +121,7 @@ void display_title(WINDOW *win, int max_x) {
 void display_footer_message(WINDOW *win, int max_y, int max_x) {
     const char *footer = "To restore main screen, Press \"q\"";
     wattron(win, COLOR_PAIR(1));
-    mvwprintw(win, max_y - 1, 0, "");
+    mvwprintw(win, max_y - 1, 0, " ");
     whline(win, ' ', wbuf.ws_col);
     mvwprintw(win, max_y - 1, max_x * 0.01, "%s", footer);
     wattroff(win, COLOR_PAIR(1));

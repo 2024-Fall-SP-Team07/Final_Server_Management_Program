@@ -13,28 +13,31 @@ int ask_delete_confirmation(int* line)
     mvprintw(*line, 0, "%s", message);
     refresh();
     
-    ch = getch();
-    if (ch == 'y' || ch == 'Y')
-    {
-        clear();
-        snprintf(message, sizeof(message), "Do you want to delete the files? (y/n) : %c", ch);
-        mvprintw((*line)++, 0, "%s", message);
+    while(1){
+        ch = getch();
+        if (ch == 'y' || ch == 'Y')
+        {
+            clear();
+            snprintf(message, sizeof(message), "Do you want to delete the files? (y/n) : %c", ch);
+            mvprintw((*line)++, 0, "%s", message);
+            refresh();
+
+            return 1;
+        }
+        else if (ch == 'n' || ch == 'N')
+        {
+            clear();
+            snprintf(message, sizeof(message), "Do you want to delete the files? (y/n) : %c", ch);
+            mvprintw((*line)++, 0, "%s", message);
+            refresh();
+
+            return 0;
+        }
+
+        mvprintw(2, 2, "- Invalid Input. Please Input Again.");
         refresh();
-
-        return 1;
     }
-    else if (ch == 'n' || ch == 'N')
-    {
-        clear();
-        snprintf(message, sizeof(message), "Do you want to delete the files? (y/n) : %c", ch);
-        mvprintw((*line)++, 0, "%s", message);
-        refresh();
-
-        return 0;
-    }
-
-    (*line)++;
-    return ask_delete_confirmation(line); // 잘못된 입력 시 다시 묻기
+    return 0;
 }
 
 int tmp_cleanup_main()
@@ -93,8 +96,8 @@ int tmp_cleanup_main()
     else
     {
         move(2, 2);
-        addstr("- Stopped by user. halt.");
-        snprintf(message, sizeof(message), "- To restore main screen, Press \"q\"");
+        addstr("- Stopped by user.");
+        snprintf(message, sizeof(message), "- To restore main screen, Press \"q\".");
         mvprintw(3, 2, "%s", message);
         refresh();
     }

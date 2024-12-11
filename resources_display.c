@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <sys/stat.h>
 
 const Unit_Mapping unitMap[] = {
     { KB, "KB" },
@@ -196,9 +197,18 @@ void display_clear(struct winsize* wbuf, int repeat){
 
 void display_System_Info(int now_row, int now_col){
     char buf[LEN] = { '\0' }, funcBuf[FUNC_BUF_LEN] = { '\0' };
+    int status = 0, len;
     get_Hostname(funcBuf, sizeof(funcBuf));
-    sprintf(buf, "Server: %s\t\t\t\t", funcBuf);
+    sprintf(buf, "Server: %s", funcBuf);
     addstr(buf);
+    if (strlen(buf) < wbuf.ws_col / 2) {
+        move(now_row, wbuf.ws_col / 2);
+        status = 0;
+    } else {
+        status = 1;
+        len = strlen(buf) + 3;
+        move(now_row, strlen(buf) + 3);
+    }
     get_ProductName(funcBuf, sizeof(funcBuf));
     sprintf(buf, "Unit Model Name: %s", funcBuf);
     addstr(buf);
@@ -207,29 +217,38 @@ void display_System_Info(int now_row, int now_col){
     get_SystemTime(funcBuf);
     sprintf(buf, "System Time: %s\t\t",funcBuf);
     addstr(buf);
+    if (status == 0) {
+        move(now_row + 1, wbuf.ws_col / 2);
+    } else {
+        move(now_row + 1, len);
+    }
     get_UpTime(funcBuf);
     sprintf(buf, "Uptime: %s", funcBuf);
     addstr(buf);
 }
 
-short check_running_collector(void* result, char* type){
-    DateInfo log_date;
-    log_date = (strcmp(type, "CPU") == 0) ? ((CPU_Result*) result)->date : ((MEM_Info*) result)->date;
-    if (log_date.sec - before_sec < 2 && log_date.sec - before_sec > -2) {
-        same_sec_cnt = 0;
-        before_sec = log_date.sec;
-        return 1;
-    } else {
-        before_sec = log_date.sec;
+short check_running_collector(){
+    struct stat log_stat;
+    time_t file_time, system_time;
+    double diff_time;
+    if (stat(CPU_INFO_LOG, &log_stat) == -1){
         return 0;
     }
-    return 0;
+    file_time = log_stat.st_mtime;
+    system_time = time(NULL);
+    diff_time = difftime(system_time, file_time);
+    if (diff_time < 2 && diff_time > -2){
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 void display_CPU_Info(struct winsize* wbuf, int* status, int temp_duration, int usage_duration, int now_row, int now_col){
     CPU_Result cpu_info = get_CPU_Information(1, 1);
     CPU_Result avg_cpu_info = get_CPU_Information(temp_duration, usage_duration);
     char buf[LEN] = { '\0' };
+    
     // Print CPU Temperatrue
     attron(COLOR_PAIR(1));
     move(now_row + 2, 0);
@@ -239,27 +258,38 @@ void display_CPU_Info(struct winsize* wbuf, int* status, int temp_duration, int 
     attroff(COLOR_PAIR(1));
     move(now_row + 3, now_col);
     hline(' ', wbuf->ws_col);
-    *status = check_running_collector(&cpu_info, "CPU");
+    *status = check_running_collector();
     if (*status == 1){       
-        addstr("CPU:      [");
-        for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(cpu_info.temp / 90))) ? addstr("#") : addstr(" "));
-        addstr("]");
-        (cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0; // Color change if temp >= CPU TEMP CRITICAL POINT
-        sprintf(buf, " %.1f Celsius", cpu_info.temp);
-        addstr(buf);
-        (cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-        move(now_row + 4, now_col);
-        hline(' ', wbuf->ws_col);
-        addstr("CPU(AVG): [");
-        for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(avg_cpu_info.temp / 90))) ? addstr("#") : addstr(" "));
-        addstr("]");
-        (avg_cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0; // Color change if avg. temp >= CPU AVG TEMP CRITICAL POINT
-        sprintf(buf, " %.1f Celsius ", avg_cpu_info.temp);
-        addstr(buf);
-        (avg_cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-        move(now_row + 4, wbuf->ws_col * (BAR_RATIO + 0.25));
-        sprintf(buf, "(Duration: %d sec.)", temp_duration);
-        addstr(buf);
+        if (cpu_info.temp < 0){
+            move(now_row + 3, 0);
+            hline(' ', wbuf->ws_col);
+            move(now_row + 3, now_col);
+            addstr("CPU:       Not Supported.");
+            move(now_row + 4, 0);
+            hline(' ', wbuf->ws_col);
+            move(now_row + 4, now_col);
+            addstr("CPU(AVG):  Not Supported.");
+        } else {
+            addstr("CPU:      [");
+            for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(cpu_info.temp / 90))) ? addstr("#") : addstr(" "));
+            addstr("]");
+            (cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0; // Color change if temp >= CPU TEMP CRITICAL POINT
+            sprintf(buf, " %.1f Celsius", cpu_info.temp);
+            addstr(buf);
+            (cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
+            move(now_row + 4, now_col);
+            hline(' ', wbuf->ws_col);
+            addstr("CPU(AVG): [");
+            for (int i = 0; i < wbuf->ws_col * BAR_RATIO; (i++ < (wbuf->ws_col*BAR_RATIO*(avg_cpu_info.temp / 90))) ? addstr("#") : addstr(" "));
+            addstr("]");
+            (avg_cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0; // Color change if avg. temp >= CPU AVG TEMP CRITICAL POINT
+            sprintf(buf, " %.1f Celsius ", avg_cpu_info.temp);
+            addstr(buf);
+            (avg_cpu_info.temp >= CPU_TEMP_CRITICAL_POINT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
+            move(now_row + 4, wbuf->ws_col * (BAR_RATIO + 0.25));
+            sprintf(buf, "(Duration: %d sec.)", temp_duration);
+            addstr(buf);
+        }
     } else {
         hline(' ', wbuf->ws_col);
         addstr("    - Resources collector program is not running.");
@@ -492,12 +522,6 @@ void display_Disk_Info(void){
             return;
         }
         head = get_Partition_Info_List(&list_count);
-        if (head == NULL){
-            fprintf(stderr, "%s\n", exception(-4, "display_Disk_Info", "Partition List", &date));
-            continue;
-        }
-        path_max_len = get_Path_Max_Length(head) + 3;
-        fileSysetm_max_len = get_fileSystem_Max_Length(head) + 3;
         now_row = 0;
         now_col = wbuf.ws_col * 0.01;
         move(now_row += 3, now_col);
@@ -511,6 +535,14 @@ void display_Disk_Info(void){
         addstr(buf);
         move(now_row += 1, 0);
         hline(' ' , wbuf.ws_col);
+
+        if (head == NULL){
+            fprintf(stderr, "%s\n", exception(-4, "display_Disk_Info", "Partition List", &date));
+        } else {
+            path_max_len = get_Path_Max_Length(head) + 3;
+            fileSysetm_max_len = get_fileSystem_Max_Length(head) + 3;
+        }
+
         move(now_row, now_col);
         addstr("FileSystem");
         move(now_row, now_col += fileSysetm_max_len);
@@ -520,69 +552,72 @@ void display_Disk_Info(void){
         move(now_row++, now_col += (wbuf.ws_col * (DISK_BAR_RATIO / 2) + 12));
         addstr("(Used   /   Total)");
         attroff(COLOR_PAIR(1));
+       
         for (i = PARTITION_LINE + 1; i < wbuf.ws_row - 3; i++){
             move(i, 0);
             hline(' ', wbuf.ws_col);
         }
-        for (int j = 0; (j < jump_cnt) && (blind == 1) && (display_cnt <= list_count); j++) {
-            next = head->next;
-            free(head);
-            head = next;
-            continue;
-        }
-        for (i = 0; head != NULL; i++){
-            now_col = wbuf.ws_col * 0.01;
-            move(now_row + i, now_col);
-            sprintf(buf, "%s", head->fileSystem);
-            addstr(buf);
-            move (now_row + i, now_col =+ fileSysetm_max_len);
-            sprintf(buf, "%s", head->mount_path);
-            addstr(buf);
-            move (now_row + i, now_col += path_max_len);
-            addstr("[");
-            for (int i = 0; i < wbuf.ws_col * DISK_BAR_RATIO; (i++ < (wbuf.ws_col*DISK_BAR_RATIO*((head->size.total_space - head->size.free_size) / (double)head->size.total_space))) ? addstr("#") : addstr(" "));
-            addstr("]");
-            (((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100 >= DISK_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
-            // Change usage color if usage >= DISK USAGE CRITICAL POINT
-            sprintf(buf, "%5.1lf%%  ", ((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100);
-            addstr(buf);
-            (((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100 >= DISK_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-            move(now_row + i, now_col += ((wbuf.ws_col * DISK_BAR_RATIO) + 10));
-            addstr("(");
-            (((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100 >= DISK_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
-            // Change capacity color if usage >= DISK USAGE CRITICAL POINT
-            sprintf(buf, "%.2lf%s", convert_Size_Unit(head->size.total_space - head->size.free_size, DISK_unit), unitMap[(int)DISK_unit].str);
-            addstr(buf);
-            (((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100 >= DISK_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
-            sprintf(buf, " / %.2lf%s)", convert_Size_Unit(head->size.total_space, DISK_unit), unitMap[(int)DISK_unit].str);
-            addstr(buf);
-
-            if ((PARTITION_LINE + i - jump_cnt >= wbuf.ws_row - 4) && (head->next != NULL)){ 
-                break;
+        if (head != NULL){
+            for (int j = 0; (j < jump_cnt) && (blind == 1) && (display_cnt <= list_count); j++) {
+                next = head->next;
+                free(head);
+                head = next;
+                continue;
             }
+            for (i = 0; head != NULL; i++){
+                now_col = wbuf.ws_col * 0.01;
+                move(now_row + i, now_col);
+                sprintf(buf, "%s", head->fileSystem);
+                addstr(buf);
+                move (now_row + i, now_col =+ fileSysetm_max_len);
+                sprintf(buf, "%s", head->mount_path);
+                addstr(buf);
+                move (now_row + i, now_col += path_max_len);
+                addstr("[");
+                for (int i = 0; i < wbuf.ws_col * DISK_BAR_RATIO; (i++ < (wbuf.ws_col*DISK_BAR_RATIO*((head->size.total_space - head->size.free_size) / (double)head->size.total_space))) ? addstr("#") : addstr(" "));
+                addstr("]");
+                (((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100 >= DISK_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+                // Change usage color if usage >= DISK USAGE CRITICAL POINT
+                sprintf(buf, "%5.1lf%%  ", ((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100);
+                addstr(buf);
+                (((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100 >= DISK_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
+                move(now_row + i, now_col += ((wbuf.ws_col * DISK_BAR_RATIO) + 10));
+                addstr("(");
+                (((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100 >= DISK_USAGE_CRITICAL_PERCENT) ? attron(COLOR_PAIR(2) | A_BOLD) : 0;
+                // Change capacity color if usage >= DISK USAGE CRITICAL POINT
+                sprintf(buf, "%.2lf%s", convert_Size_Unit(head->size.total_space - head->size.free_size, DISK_unit), unitMap[(int)DISK_unit].str);
+                addstr(buf);
+                (((head->size.total_space - head->size.free_size) / (double)head->size.total_space) * 100 >= DISK_USAGE_CRITICAL_PERCENT) ? attroff(COLOR_PAIR(2) | A_BOLD) : 0;
+                sprintf(buf, " / %.2lf%s)", convert_Size_Unit(head->size.total_space, DISK_unit), unitMap[(int)DISK_unit].str);
+                addstr(buf);
 
-            next = head->next;
-            free(head);
-            head = next;
-        }
-        display_cnt_const = (display_cnt_const == 0) ? i : display_cnt_const;
-        display_cnt = (display_cnt == 0) ? i : display_cnt; 
-        if ((list_count - display_cnt_const > 0)){ 
-            blind = 1;
-            move(wbuf.ws_row - 3, 0);
-            hline(' ', wbuf.ws_col);
-            move(wbuf.ws_row - 3, now_col = wbuf.ws_col * 0.01);
-            if (display_cnt_const == 0) {
-                sprintf(buf, "...(%d rows omitted: %d / %d) - To see the remaining, ", list_count - display_cnt_const, display_cnt, list_count);
-                addstr(buf);
-                attron(COLOR_PAIR(2) | A_BOLD);
-                addstr("Increase the terminal size and restart.");
-                attroff(COLOR_PAIR(2) | A_BOLD);
-            } else {
-                sprintf(buf, "...(%d rows omitted: %d / %d) - To see the remaining, Press 'm' (Next) and 'n'(Previous)", list_count - display_cnt_const, display_cnt, list_count);
-                addstr(buf);
+                if ((PARTITION_LINE + i - jump_cnt >= wbuf.ws_row - 4) && (head->next != NULL)){ 
+                    break;
+                }
+
+                next = head->next;
+                free(head);
+                head = next;
             }
-            move(wbuf.ws_row - 3, now_col);
+            display_cnt_const = (display_cnt_const == 0) ? i : display_cnt_const;
+            display_cnt = (display_cnt == 0) ? i : display_cnt; 
+            if ((list_count - display_cnt_const > 0)){ 
+                blind = 1;
+                move(wbuf.ws_row - 3, 0);
+                hline(' ', wbuf.ws_col);
+                move(wbuf.ws_row - 3, now_col = wbuf.ws_col * 0.01);
+                if (display_cnt_const == 0) {
+                    sprintf(buf, "...(%d rows omitted: %d / %d) - To see the remaining, ", list_count - display_cnt_const, display_cnt, list_count);
+                    addstr(buf);
+                    attron(COLOR_PAIR(2) | A_BOLD);
+                    addstr("Increase the terminal size and restart.");
+                    attroff(COLOR_PAIR(2) | A_BOLD);
+                } else {
+                    sprintf(buf, "...(%d rows omitted: %d / %d) - To see the remaining, Press 'm' (Next) and 'n'(Previous)", list_count - display_cnt_const, display_cnt, list_count);
+                    addstr(buf);
+                }
+                move(wbuf.ws_row - 3, now_col);
+            }
         }
         refresh();   
         sleep(refresh_cycle);

@@ -1,4 +1,3 @@
-#include "permission_check.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,9 +8,27 @@
 #include <unistd.h>
 #include <time.h>
 #include <ncurses.h>
-#include <termio.h>
 
-extern struct winsize wbuf;
+#define MAX_LINE_LENGTH_A 512
+#define MAX_LINE_LENGTH 256
+#define MAX_ITEMS_PER_PAGE 10
+#define LOG_FILE_PREFIX "permission_fix_log_"
+
+typedef struct {
+    char filename[MAX_LINE_LENGTH];
+    char path[MAX_LINE_LENGTH];
+    char old_owner[MAX_LINE_LENGTH_A];
+    char new_owner[MAX_LINE_LENGTH_A];
+    char old_perms[16];
+    char new_perms[16];
+} FileLog;
+
+typedef struct {
+    char path[MAX_LINE_LENGTH];
+    char owner[MAX_LINE_LENGTH];
+    char group[MAX_LINE_LENGTH];
+    int perms;
+} FilePermission;
 
 void get_current_time(char *buffer, size_t size) {
     time_t now = time(NULL);
@@ -178,11 +195,7 @@ void display_page(FileLog *logs, int total_files, int invalid_files, const char 
     if (end < count) {
         mvprintw(LINES - 1, 0, "more? (Press 'n' for next page, 'q' to quit)");
     } else {
-        move(LINES - 1, 0);
-        attron(COLOR_PAIR(1));
-        hline(' ', wbuf.ws_col);
-        mvprintw(LINES - 1, wbuf.ws_col * 0.01, "End of results. To restore main screen, Press \"q\"");
-        attroff(COLOR_PAIR(1));
+        mvprintw(LINES - 1, 0, "End of results. (Press 'q' to quit)");
     }
 
     refresh();
@@ -213,11 +226,31 @@ void ncurses_display(FileLog *logs, int total_files, int invalid_files, const ch
 }
 
 int permissions_main() {
-    const char *input_file = "./file_permissions.txt";
+    const char *input_file = "file_permissions.txt";
     char log_file[MAX_LINE_LENGTH];
     FilePermission *permissions = NULL;
     FileLog *logs = NULL;
     int count = 0, log_count = 0;
+
+    //파일이 없을 때 -> 파일이 없음을 출력하고 q키를 입력하면 종료
+    struct stat file_stat;
+    if (stat(input_file, &file_stat) == -1) {
+        initscr();
+        noecho();
+        cbreak();
+
+        mvprintw(0, 0, "Error: file_permissions.txt does not exist.");
+        mvprintw(2, 2, "- Press 'q' to quit.");
+        refresh();
+
+        while (1) {
+            int ch = getch();
+            if (ch == 'q') {
+                endwin();
+                return EXIT_FAILURE;
+            }
+        }
+    }
 
     if (parse_permissions(input_file, &permissions, &count) == -1) {
         return EXIT_FAILURE;

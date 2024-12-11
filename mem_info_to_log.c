@@ -11,12 +11,15 @@ void *write_Mem_Information() {
     int fd = -1;
     MEM_Info content;
     DIR *dir_ptr = NULL;
-    content.date = get_Date();
-    content.size = get_Mem_Usage();
-    ((dir_ptr = opendir(LOG_PATH)) == NULL) ? mkdir(LOG_PATH, (S_IRWXU | S_IRGRP | S_IXGRP) & (~S_IRWXO) ) : closedir(dir_ptr); // Create directory if not exists (750)
-    ((fd = open(MEM_INFO_LOG, O_WRONLY | O_CREAT | O_APPEND, (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP ) & (~S_IRWXO))) == -1) ? printf("%s\n", exception(-1, "write_Mem_Information", "Memory Information Log", &(content.date))) : 0;     
-    (write(fd, &content, sizeof(MEM_Info)) != sizeof(MEM_Info)) ? printf("%s\n", exception(-3, "write_Mem_Information", "Memory Information Log", &(content.date))) : 0; // Save Memory Information (Free, Total Size)
-    close(fd);
+    ((dir_ptr = opendir(LOG_PATH)) == NULL) ? mkdir(LOG_PATH, (S_IRWXU | S_IRGRP | S_IXGRP) & (~S_IRWXO) ) : closedir(dir_ptr);
+    while (1){
+        content.date = get_Date();
+        content.size = get_Mem_Usage();
+        ((fd = open(MEM_INFO_LOG, O_WRONLY | O_CREAT | O_APPEND, (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP ) & (~S_IRWXO))) == -1) ? printf("%s\n", exception(-1, "write_Mem_Information", "Memory Information Log", &(content.date))) : 0;
+        (write(fd, &content, sizeof(MEM_Info)) != sizeof(MEM_Info)) ? printf("%s\n", exception(-3, "write_Mem_Information", "Memory Information Log", &(content.date))) : 0;
+        close(fd);
+        sleep(1);
+    }
     return NULL;
 }
 

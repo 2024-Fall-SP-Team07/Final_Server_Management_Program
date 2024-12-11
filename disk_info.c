@@ -13,21 +13,20 @@ DISK_Result* get_Partition_Info_List(short* partition_count){
         return NULL;
     }
     while (fscanf(fp, "%s %s %*s %*s %*s %*s", fileSystem, path_buf) != EOF) {
+        if (strncmp("/dev", fileSystem, 4) != 0 && strncmp("tmpfs", fileSystem, 5) != 0) {
+            continue;
+        }
+        if (strncmp("/dev/loop", fileSystem, 9) == 0){
+            continue;
+        }
         if ((res = (DISK_Result*)malloc(sizeof(DISK_Result))) == NULL){
             fclose(fp);
             return NULL;
         }   
-        if (strncmp("/dev", fileSystem, 4) != 0 && strncmp("tmpfs", fileSystem, 5) != 0) {
-            continue;
-        }
         strcpy(res->fileSystem, fileSystem);
         strcpy(res->mount_path, path_buf);
         res->size = get_Partition_Size(path_buf);
         cnt++;
-
-        if (((int)(res->size.free_size) ==  0) || (int)((res->size.total_space) == 0)) {
-            return NULL;
-        }
 
         res->next = NULL;
         if (head == NULL) {
