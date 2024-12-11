@@ -5,7 +5,7 @@ LINK = -lncurses -lpthread
 TARGET = 00_mainScreen
 SRCS = 00_mainScreen.c check_before_cleanup.c cleanup.c tmp_cleanup.c permission_check.c pw_check5.c \
 	resources_monitor.c common.c cpu_info_from_log.c mem_info_from_log.c resources_display.c sys_info.c disk_info.c network_info.c \
-	logrotate_main.c logrotate.c log_check_final.c
+	logrotate.c log_check_final.c
 OBJS = $(SRCS:.c=.o)
 
 all: $(TARGET)

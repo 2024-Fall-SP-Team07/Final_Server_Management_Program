@@ -14,5 +14,6 @@ typedef struct {
 void generate_log_filename(const char *base_name, int index, char *out_filename);
 void delete_old_logs(const char *log_dir, int keep_days);
 void rotate_log(LogConfig *config);
+int logrotate_main();
 
 #endif 

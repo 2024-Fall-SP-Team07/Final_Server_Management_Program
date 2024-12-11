@@ -1,6 +1,16 @@
-#include "logrotate.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <ncurses.h>
+
+typedef struct {
+    char log_path[256];    // Log file path
+    int max_size_mb;       // Max file size in MB
+    int keep_days;         // Retention days
+} LogConfig;
 
 void generate_log_filename(const char *base_name, int index, char *out_filename) {
     time_t t = time(NULL);
@@ -19,19 +29,25 @@ void generate_log_filename(const char *base_name, int index, char *out_filename)
 void delete_old_logs(const char *log_dir, int keep_days) {
     char command[512];
     snprintf(command, sizeof(command), "find %s -name '*.log' -mtime +%d -exec rm -f {} \\;", log_dir, keep_days);
-    system(command);
-    printf("Deleted logs older than %d days in directory: %s\n", keep_days, log_dir);
+    int ret = system(command);
+
+    if (ret == 0) {
+        mvprintw(4, 2, "- Log deletion completed successfully!");
+    } else {
+        mvprintw(4, 2, "- Log deletion failed.");
+    }
+    refresh();
 }
 
 void rotate_log(LogConfig *config) {
     struct stat st;
     if (stat(config->log_path, &st) != 0) {
-        perror("Error accessing log file");
+        mvprintw(3, 2, "- Error accessing log file: %s", config->log_path);
+        refresh();
         return;
     }
 
     int size_mb = st.st_size / (1024 * 1024);
-    printf("Current file size of '%s': %d MB\n", config->log_path, size_mb);
 
     if (size_mb > config->max_size_mb) {
         int index = 0;
@@ -43,10 +59,91 @@ void rotate_log(LogConfig *config) {
             generate_log_filename(config->log_path, index, new_filename);
         }
 
-        rename(config->log_path, new_filename);
-        fclose(fopen(config->log_path, "w"));
-        printf("Rotated log file: %s -> %s\n", config->log_path, new_filename);
+        if (rename(config->log_path, new_filename) == 0) {
+            fclose(fopen(config->log_path, "w"));
+            mvprintw(3, 2, "- Log rotation completed successfully!");
+        } else {
+            mvprintw(3, 2, "- Log rotation failed.");
+        }
     } else {
-        printf("Log file does not exceed the maximum size (%d MB). No rotation performed.\n", config->max_size_mb);
+        mvprintw(3, 2, "- Log rotation not required.");
     }
+    refresh();
+}
+
+void draw_ui(LogConfig *config, char *log_dir) {
+    initscr();
+    noecho();
+    cbreak();
+    curs_set(1);
+    int y = 0;
+
+    mvprintw(y++, 0, "<Log Rotation>");
+
+    mvprintw(y += 1, 2, "- Enter the ");
+    attron(A_REVERSE);
+    printw("full path");
+    attroff(A_REVERSE);
+    printw(" of the log file: ");
+    echo();
+    getstr(config->log_path);
+    noecho();
+    y++;
+
+    mvprintw(y, 2, "- Enter the ");
+    attron(A_REVERSE);
+    printw("maximum size");
+    attroff(A_REVERSE);
+    printw(" for log rotation (MB): ");
+    echo();
+    scanw("%d", &config->max_size_mb);
+    noecho();
+    y++;
+
+    mvprintw(y, 2, "- Enter the ");
+    attron(A_REVERSE);
+    printw("directory");
+    attroff(A_REVERSE);
+    printw(" containing logs for ");
+    attron(A_REVERSE);
+    printw("deletion");
+    attroff(A_REVERSE);
+    printw(": ");
+    echo();
+    getstr(log_dir);
+    noecho();
+    y++;
+
+    mvprintw(y, 2, "- Enter the number of ");
+    attron(A_REVERSE);
+    printw("days");
+    attroff(A_REVERSE);
+    printw(" to keep old logs: ");
+    echo();
+    scanw("%d", &config->keep_days);
+    noecho();
+    y++;
+
+    curs_set(0);
+    clear();
+    mvprintw(0, 0, "Processing log rotation and cleanup...");
+    refresh();
+
+    rotate_log(config);
+    delete_old_logs(log_dir, config->keep_days);
+
+    mvprintw(6, 0, "Press any key to restore main...");
+    refresh();
+
+    getch();
+    endwin();
+}
+
+int logrotate_main() {
+    LogConfig config;
+    char log_dir[256];
+
+    draw_ui(&config, log_dir);
+
+    return 0;
 }

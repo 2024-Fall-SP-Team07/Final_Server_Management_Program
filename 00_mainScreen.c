@@ -5,7 +5,7 @@
 #include "permission_check.h"
 #include "pw_check5.h"
 #include "log_check_final.h"
-#include "logrotate_main.h"
+#include "logrotate.h"
 #include <ncurses.h>
 #include <stdio.h>
 #include <string.h>
