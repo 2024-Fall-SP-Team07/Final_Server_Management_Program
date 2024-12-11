@@ -29,7 +29,7 @@ const Unit_Mapping unitMap[] = {
 extern struct winsize wbuf;
 struct sigaction sa;
 UNIT MEM_unit = GB, SWAP_unit = MB, DISK_unit = GB;
-int refresh_cycle = 1, cpu_usage_avg_duration = 3600, cpu_temp_avg_duration = 3600;
+int refresh_cycle = 1, cpu_usage_avg_duration = 1, cpu_temp_avg_duration = 1;
 short jump_cnt = 0, return_exit = 0, blind = 0, display_cnt = 0, display_cnt_const = 0, list_count = 0, before_sec = -1, same_sec_cnt = 0;
 
 void signal_handling(int sig){
